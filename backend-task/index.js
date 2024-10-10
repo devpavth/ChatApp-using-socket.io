@@ -4,6 +4,7 @@ const mongoose = require("mongoose");
 const http = require('http');
 const socketIo = require('socket.io');
 const userRoutes = require("./routes/auth");
+const path = require('path');
 
 
 const app = express();
@@ -15,6 +16,19 @@ app.use(cors());
 app.use(express.json());
 
 app.use("/api/auth", userRoutes);
+
+const __dirname1 = path.resolve();
+if(process.env.NODE_ENV === 'production'){
+  app.use(express.static(path.join(__dirname1,'chat-app/build')));
+  app.get('*',(req,res) =>{
+    res.sendFile(path.resolve(__dirname1, "chat-app","build","index.html"));
+  })
+}else{
+  app.get('/', (req, res) => {
+    res.send('Chat Server is running');
+  });
+  
+}
 
 
 const PORT = 5000;
@@ -28,9 +42,9 @@ mongoose.connect(process.env.MONGO_URL)
 });
 
 
-app.get('/', (req, res) => {
-  res.send('Chat Server is running');
-});
+// app.get('/', (req, res) => {
+//   res.send('Chat Server is running');
+// });
 
 const io = socketIo(server, {
   cors: {
