@@ -3,89 +3,87 @@ import styled from "styled-components";
 import ChatInput from "../ChatInput/ChatInput";
 import Logout from "../Logout/Logout";
 import { v4 as uuidv4 } from "uuid";
-import axios from "axios";
-import { sendMessageRoute, recieveMessageRoute } from "../../utils/APIRoutes";
+// import axios from "axios";
+// import { sendMessageRoute, recieveMessageRoute } from "../../utils/APIRoutes";
 
 function ChatContainer({ currentChat, socket }) {
 
   const [messages, setMessages] = useState([]);
   const scrollRef = useRef();
-  const [arrivalMessage, setArrivalMessage] = useState(null);
+  // const [arrivalMessage, setArrivalMessage] = useState(null);
 
   useEffect(() => {
-    const fetchMessages = async () => {
-      const storedUser = localStorage.getItem(process.env.REACT_APP_LOCALHOST_KEY);
-      const data = await JSON.parse(storedUser);
-      const response = await axios.post(recieveMessageRoute, {
-        from: data._id,
-        to: currentChat._id,
-      });
-      setMessages(response.data);
-
+    const fetchMessagesFromLocalStorage =  () => {
       // Fetch messages from local storage
       const storedMessages = localStorage.getItem(`${currentChat._id}_messages`);
       if (storedMessages) {
-        const localMessages = JSON.parse(storedMessages);
-        setMessages((prevMessages) => [...prevMessages, ...localMessages]);
-      }
+        let localMessages = JSON.parse(storedMessages);
+
+        localMessages = localMessages.map((msg) => {
+          return { ...msg, id: msg.id || uuidv4() };
+        });
+
+        setMessages(localMessages);
+      }      
     };
 
     if (currentChat) {
-      fetchMessages();
+      fetchMessagesFromLocalStorage();
     }
   }, [currentChat]);
 
-  useEffect(() => {
-    const getCurrentChat = async () => {
-      if (currentChat) {
-        await JSON.parse(
-          localStorage.getItem(process.env.REACT_APP_LOCALHOST_KEY)
-        )._id;
-      }
-    };
-    getCurrentChat();
-  }, [currentChat]);
+  // useEffect(() => {
+  //   const getCurrentChat = async () => {
+  //     if (currentChat) {
+  //       await JSON.parse(
+  //         localStorage.getItem(process.env.REACT_APP_LOCALHOST_KEY)
+  //       )._id;
+  //     }
+  //   };
+  //   getCurrentChat();
+  // }, [currentChat]);
 
-  const handleSendMsg = async (msg) => {
-    const storedUser = localStorage.getItem(process.env.REACT_APP_LOCALHOST_KEY);
-    const data = await JSON.parse(storedUser);
-    
-    socket.current.emit("send-msg", {
-      to: currentChat._id,
-      from: data._id,
-      msg,
-    });
-    await axios.post(sendMessageRoute, {
-      from: data._id,
-      to: currentChat._id,
-      message: msg,
-    });
 
-    const newMessage = { fromSelf: true, message: msg };
+  const handleSendMsg = (msg) => {
+    const newMessage = { fromSelf: true, message: msg, id: uuidv4() };
     const updatedMessages = [...messages, newMessage];
     setMessages(updatedMessages);
 
     // Store the updated messages in local storage as a JSON array
     localStorage.setItem(`${currentChat._id}_messages`, JSON.stringify(updatedMessages));
+
+    socket.current.emit("send-msg", {
+      to: currentChat._id,
+      // from: data._id,
+      msg,
+    });
+    // await axios.post(sendMessageRoute, {
+    //   from: data._id,
+    //   to: currentChat._id,
+    //   message: msg,
+    // });
+
+    
   };
 
   useEffect(() => {
     if (socket.current) {
       socket.current.on("msg-recieve", (msg) => {
-        setArrivalMessage({ fromSelf: false, message: msg });
+        const newMessage = { fromSelf: false, message: msg, id: uuidv4() };
+        const updatedMessages = [...messages, newMessage];
+        setMessages(updatedMessages);
+
+        // Store the received message in local storage as a JSON array
+        localStorage.setItem(`${currentChat._id}_messages`, JSON.stringify(updatedMessages));
       });
     }
-  }, [socket]);
+    return () => {
+      if (socket.current) {
+        socket.current.off("msg-recieve");
+      }
+    };
+  }, [socket, messages]);
 
-  useEffect(() => {
-    if (arrivalMessage) {
-      const updatedMessages = [...messages, arrivalMessage];
-      setMessages(updatedMessages);
-
-      // Store the received message in local storage as a JSON array
-      localStorage.setItem(`${currentChat._id}_messages`, JSON.stringify(updatedMessages));
-    }
-  }, [arrivalMessage]);
 
 
   useEffect(() => {
@@ -110,8 +108,9 @@ function ChatContainer({ currentChat, socket }) {
       </div>
       <div className="chat-messages">
         {messages.map((message, index) => {
+          // console.log("Message ID:", message.id);
           return (
-            <div ref={scrollRef} key={uuidv4()}>
+            <div ref={scrollRef} key={message.id || index}>
               <div
                 className={`message ${
                   message.fromSelf ? "sended" : "received"
