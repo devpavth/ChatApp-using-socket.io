@@ -69,18 +69,3 @@ io.on('connection', (socket) => {
 server.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
-
-
-
-// paviguna116 - username
-
-
-// 33wSXdbWAb43UlJq  - password
-
-
-// GVRPGXMNcIlekx6G - pwd
-
-// pavithradevi
-
-
-// mongodb+srv://<db_username>:<db_password>@cluster0.dz5vf.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0
